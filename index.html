@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Family Budget</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google API & Identity Services -->
+  <script src="https://apis.google.com/js/api.js" defer></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Family Budget</div>
+    <div id="auth">
+      <button id="signin" class="btn">Sign in with Google</button>
+      <div id="who" class="who"></div>
+      <button id="signout" class="btn btn-outline hidden">Sign out</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="expenses" class="tab active">Expenses</button>
+    <button data-tab="income" class="tab">Income</button>
+    <button data-tab="chart1" class="tab">Monthly (Actual vs Budget)</button>
+    <button data-tab="chart2" class="tab">Balance & Projection</button>
+  </nav>
+
+  <main>
+    <!-- Expenses -->
+    <section id="expenses" class="page active">
+      <div class="card">
+        <h2>New expense</h2>
+        <div class="grid">
+          <div class="field">
+            <label>Paid by</label>
+            <div id="paidByBtnsExp" class="btn-group"></div>
+          </div>
+          <div class="field">
+            <label>Category</label>
+            <div id="categoryBtnsExp" class="btn-group scroll-x"></div>
+          </div>
+          <div class="field">
+            <label>Currency</label>
+            <select id="currencyExp">
+              <option>QAR</option>
+              <option>MYR</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Amount</label>
+            <input id="amountExp" type="number" inputmode="decimal" placeholder="0.00" />
+          </div>
+          <div class="field">
+            <label>Notes</label>
+            <input id="notesExp" type="text" placeholder="(optional)" />
+          </div>
+        </div>
+        <button id="submitExp" class="btn primary">Add expense</button>
+        <div id="expMsg" class="msg"></div>
+      </div>
+    </section>
+
+    <!-- Income -->
+    <section id="income" class="page">
+      <div class="card">
+        <h2>New income</h2>
+        <div class="grid">
+          <div class="field">
+            <label>Received by</label>
+            <div id="paidByBtnsInc" class="btn-group"></div>
+          </div>
+          <div class="field">
+            <label>Category</label>
+            <div id="categoryBtnsInc" class="btn-group scroll-x"></div>
+          </div>
+          <div class="field">
+            <label>Currency</label>
+            <select id="currencyInc">
+              <option>QAR</option>
+              <option>MYR</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Amount</label>
+            <input id="amountInc" type="number" inputmode="decimal" placeholder="0.00" />
+          </div>
+          <div class="field">
+            <label>Notes</label>
+            <input id="notesInc" type="text" placeholder="(optional)" />
+          </div>
+        </div>
+        <button id="submitInc" class="btn primary">Add income</button>
+        <div id="incMsg" class="msg"></div>
+      </div>
+    </section>
+
+    <!-- Chart 1 -->
+    <section id="chart1" class="page">
+      <div class="card">
+        <h2>Monthly actual vs budget</h2>
+        <div class="filters">
+          <label>From <input type="month" id="fromMonth1" /></label>
+          <label>To <input type="month" id="toMonth1" /></label>
+          <button id="reload1" class="btn">Reload</button>
+        </div>
+        <canvas id="canvas1" height="260"></canvas>
+      </div>
+    </section>
+
+    <!-- Chart 2 -->
+    <section id="chart2" class="page">
+      <div class="card">
+        <h2>Balance & projection</h2>
+        <div class="filters">
+          <label>From <input type="month" id="fromMonth2" /></label>
+          <label>To <input type="month" id="toMonth2" /></label>
+          <button id="reload2" class="btn">Reload</button>
+        </div>
+        <canvas id="canvas2" height="260"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
