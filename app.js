@@ -193,14 +193,13 @@ async function addIncome() {
     msg($("#incMsg"), "Failed to add. Check login & sheet access.", false);
   }
 }
-
 // ====== CHARTS ======
 let chart1, chart2;
 
 function monthKey(d) {
   const dt = new Date(d);
   if (isNaN(dt)) return null;
-  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-01`;
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 function inRange(key, from, to) {
@@ -218,6 +217,153 @@ async function drawChart1() {
 
   const actual = {};
   tx.forEach(r => {
-    const ts = r[1]; const m = r[2]; const expense = parseFloat(r[8]||"0");
+    const ts = r[1];
+    const m = r[2];
+    const expense = parseFloat(r[8] || "0");
     const key = m || monthKey(ts);
     if (!key) return;
+    if (!inRange(key, from, to)) return;
+    actual[key] = (actual[key] || 0) + expense;
+  });
+
+  const budget = {};
+  budgets.forEach(r => {
+    const m = r[0];
+    const amt = parseFloat(r[2] || "0");
+    if (!m) return;
+    const key = monthKey(m);
+    if (!inRange(key, from, to)) return;
+    budget[key] = (budget[key] || 0) + amt;
+  });
+
+  const labels = Array.from(new Set([...Object.keys(actual), ...Object.keys(budget)])).sort();
+  const dataActual = labels.map(k => +(actual[k] || 0).toFixed(2));
+  const dataBudget = labels.map(k => +(budget[k] || 0).toFixed(2));
+
+  const ctx = document.getElementById("canvas1").getContext("2d");
+  if (chart1) chart1.destroy();
+  chart1 = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels.map(k => new Date(k + "T00:00:00").toLocaleString(undefined, { month: "short", year: "numeric" })),
+      datasets: [
+        { label: "Actual expenses (base)", data: dataActual, backgroundColor: "rgba(96,165,250,0.5)", borderColor: "#60a5fa", borderWidth: 1 },
+        { label: "Budget (base)", type: "line", data: dataBudget, borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.15)", tension: 0.3, fill: false }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: "#e5e7eb" } } },
+      scales: {
+        x: { ticks: { color: "#9ca3af" }, grid: { color: "rgba(55,65,81,0.3)" } },
+        y: { ticks: { color: "#9ca3af" }, grid: { color: "rgba(55,65,81,0.3)" } }
+      }
+    }
+  });
+}
+
+async function drawChart2() {
+  const tx = await sheetsGet(`${SHEET_TRANSACTIONS}!A2:L`);
+  const settings = await sheetsGet(`${SHEET_SETTINGS}!A1:B50`);
+  const map = Object.fromEntries((settings || []).slice(1).filter(r => r[0]).map(r => [r[0], r[1]]));
+  const opening = parseFloat(map.OpeningBalance || "0");
+
+  const from = $("#fromMonth2").value ? $("#fromMonth2").value + "-01" : null;
+  const to = $("#toMonth2").value ? $("#toMonth2").value + "-01" : null;
+
+  const byMonth = {};
+  tx.forEach(r => {
+    const ts = r[1];
+    const m = r[2];
+    const inc = parseFloat(r[9] || "0");
+    const exp = parseFloat(r[8] || "0");
+    const key = m || monthKey(ts);
+    if (!key) return;
+    if (!inRange(key, from, to)) return;
+    if (!byMonth[key]) byMonth[key] = { income: 0, expense: 0 };
+    byMonth[key].income += inc;
+    byMonth[key].expense += exp;
+  });
+
+  const labels = Object.keys(byMonth).sort();
+  const incomes = labels.map(k => +(byMonth[k].income || 0).toFixed(2));
+  const expenses = labels.map(k => +(byMonth[k].expense || 0).toFixed(2));
+
+  const balances = [];
+  let bal = opening;
+  labels.forEach((k, i) => {
+    bal += incomes[i] - expenses[i];
+    balances.push(+bal.toFixed(2));
+  });
+
+  const projMonths = 3;
+  const avgWindow = 3;
+  const nets = labels.map((k, i) => incomes[i] - expenses[i]);
+  const recent = nets.slice(-avgWindow);
+  const avgNet = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0;
+
+  const projLabels = [];
+  const projBalances = [];
+  let lastMonth = labels.length ? new Date(labels[labels.length - 1] + "T00:00:00") : null;
+  let projBalStart = balances.length ? balances[balances.length - 1] : opening;
+  for (let i = 1; i <= projMonths; i++) {
+    if (!lastMonth) break;
+    const next = new Date(lastMonth);
+    next.setMonth(next.getMonth() + i);
+    const key = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-01`;
+    projBalStart += avgNet;
+    projLabels.push(key);
+    projBalances.push(+projBalStart.toFixed(2));
+  }
+
+  const ctx = document.getElementById("canvas2").getContext("2d");
+  if (chart2) chart2.destroy();
+  chart2 = new Chart(ctx, {
+    data: {
+      labels: [...labels, ...projLabels].map(k => new Date(k + "T00:00:00").toLocaleString(undefined, { month: "short", year: "numeric" })),
+      datasets: [
+        {
+          label: "Expenses (base)",
+          type: "bar",
+          data: [...expenses, ...Array(projLabels.length).fill(0)],
+          backgroundColor: "rgba(239,68,68,0.4)",
+          borderColor: "#ef4444",
+          borderWidth: 1,
+          yAxisID: "y"
+        },
+        {
+          label: "Balance (base)",
+          type: "line",
+          data: balances.concat(projLabels.map(() => null)),
+          borderColor: "#22c55e",
+          backgroundColor: "rgba(34,197,94,0.18)",
+          fill: true,
+          tension: 0.3,
+          yAxisID: "y1"
+        },
+        {
+          label: "Projected balance",
+          type: "line",
+          data: Array(labels.length).fill(null).concat(projBalances),
+          borderColor: "#60a5fa",
+          borderDash: [6, 4],
+          fill: false,
+          tension: 0.3,
+          yAxisID: "y1"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: "#e5e7eb" } } },
+      scales: {
+        x: { ticks: { color: "#9ca3af" }, grid: { color: "rgba(55,65,81,0.3)" } },
+        y: { position: "left", ticks: { color: "#9ca3af" }, grid: { color: "rgba(55,65,81,0.2)" } },
+        y1: { position: "right", ticks: { color: "#9ca3af" }, grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+}
+// You can add more helper functions here in the future if needed.
+// For now, everything ends cleanly after drawChart2().
+
