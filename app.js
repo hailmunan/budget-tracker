@@ -261,7 +261,6 @@ async function drawChart1() {
     }
   });
 }
-
 async function drawChart2() {
   const tx = await sheetsGet(`${SHEET_TRANSACTIONS}!A2:L`);
   const settings = await sheetsGet(`${SHEET_SETTINGS}!A1:B50`);
@@ -364,6 +363,6 @@ async function drawChart2() {
     }
   });
 }
+// ====== END ======
 // You can add more helper functions here in the future if needed.
 // For now, everything ends cleanly after drawChart2().
-
